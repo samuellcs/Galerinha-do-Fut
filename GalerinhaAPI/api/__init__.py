@@ -1,0 +1,3 @@
+"""
+GalerinhaAPI - App Principal
+"""
