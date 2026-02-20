@@ -11,10 +11,11 @@ Pesos:
 
 Uso:
     players = list(pelada.players.all())
-    service = TeamDrawService(players, num_teams=2)
-    teams = service.draw()
+    service = TeamDrawService(players, num_teams=2, players_per_team=5)
+    result = service.draw()
     
-    # Retorna times balanceados por peso total
+    # result['teams'] = times balanceados por peso total
+    # result['substitutes'] = jogadores que ficam de próxima
 """
 
 import random
@@ -27,6 +28,7 @@ class TeamDrawService:
     
     Usa algoritmo greedy para distribuir jogadores de forma
     que os times fiquem com pesos totais similares.
+    Jogadores excedentes ficam como reservas (de próxima).
     """
     
     DEFAULT_TEAM_NAMES = [
@@ -42,6 +44,7 @@ class TeamDrawService:
         self, 
         players: List[Any], 
         num_teams: int = 2,
+        players_per_team: Optional[int] = None,
         team_names: Optional[List[str]] = None
     ):
         """
@@ -50,21 +53,33 @@ class TeamDrawService:
         Args:
             players: Lista de jogadores (Player objects com skill_level)
             num_teams: Número de times a criar (default: 2)
+            players_per_team: Jogadores por time (ex: 5 para 5x5). 
+                             Se None, distribui todos igualmente.
             team_names: Nomes customizados para os times (opcional)
         """
         self.players = players
         self.num_teams = num_teams
+        self.players_per_team = players_per_team
         self.team_names = team_names or self.DEFAULT_TEAM_NAMES[:num_teams]
         
         self._validate()
     
     def _validate(self):
         """Valida parâmetros do sorteio."""
-        if len(self.players) < self.num_teams:
-            raise ValueError(
-                f"Número insuficiente de jogadores. "
-                f"Mínimo: {self.num_teams}, Atual: {len(self.players)}"
-            )
+        min_needed = self.num_teams * (self.players_per_team or 1)
+        
+        if self.players_per_team:
+            if len(self.players) < min_needed:
+                raise ValueError(
+                    f"Número insuficiente de jogadores. "
+                    f"Mínimo: {min_needed}, Atual: {len(self.players)}"
+                )
+        else:
+            if len(self.players) < self.num_teams:
+                raise ValueError(
+                    f"Número insuficiente de jogadores. "
+                    f"Mínimo: {self.num_teams}, Atual: {len(self.players)}"
+                )
         
         if self.num_teams < 2:
             raise ValueError("Número mínimo de times é 2.")
@@ -82,17 +97,18 @@ class TeamDrawService:
         """Obtém o skill_level do jogador."""
         return getattr(player, 'skill_level', 2)  # Default: médio
     
-    def draw(self) -> List[Dict[str, Any]]:
+    def draw(self) -> Dict[str, Any]:
         """
         Executa o sorteio de times balanceado por peso.
         
         Algoritmo:
         1. Ordena jogadores por skill (maior primeiro)
-        2. Para cada jogador, adiciona ao time com menor peso total
-        3. Adiciona aleatoriedade nos jogadores de mesmo nível
+        2. Se players_per_team definido, seleciona os melhores e distribui
+        3. Para cada jogador, adiciona ao time com menor peso total
+        4. Jogadores excedentes ficam como reservas
         
         Returns:
-            Lista de dicts com nome do time, jogadores e peso total.
+            Dict com 'teams' (lista de times) e 'substitutes' (reservas).
         """
         # Cria estrutura dos times
         teams = [
@@ -107,16 +123,43 @@ class TeamDrawService:
         # Ordena jogadores por skill (maior primeiro) com shuffle nos de mesmo nível
         sorted_players = self._shuffle_and_sort_players()
         
-        # Distribui usando algoritmo greedy
-        for player in sorted_players:
-            skill = self._get_skill(player)
-            
-            # Encontra time com menor peso total
-            min_team = min(teams, key=lambda t: t["total_skill"])
-            min_team["players"].append(player)
-            min_team["total_skill"] += skill
+        substitutes = []
         
-        return teams
+        if self.players_per_team:
+            # Total de jogadores que entram nos times
+            total_in_teams = self.players_per_team * self.num_teams
+            
+            # Os melhores entram, o restante fica de próxima
+            players_for_teams = sorted_players[:total_in_teams]
+            substitutes = sorted_players[total_in_teams:]
+            
+            # Distribui usando algoritmo greedy
+            for player in players_for_teams:
+                skill = self._get_skill(player)
+                
+                # Encontra time com menor peso total que ainda não está cheio
+                eligible_teams = [
+                    t for t in teams 
+                    if len(t["players"]) < self.players_per_team
+                ]
+                if not eligible_teams:
+                    break
+                    
+                min_team = min(eligible_teams, key=lambda t: t["total_skill"])
+                min_team["players"].append(player)
+                min_team["total_skill"] += skill
+        else:
+            # Distribui todos igualmente (comportamento original)
+            for player in sorted_players:
+                skill = self._get_skill(player)
+                min_team = min(teams, key=lambda t: t["total_skill"])
+                min_team["players"].append(player)
+                min_team["total_skill"] += skill
+        
+        return {
+            "teams": teams,
+            "substitutes": substitutes
+        }
     
     def _shuffle_and_sort_players(self) -> List[Any]:
         """
@@ -134,7 +177,7 @@ class TeamDrawService:
             reverse=True
         )
     
-    def draw_simple(self) -> List[Dict[str, Any]]:
+    def draw_simple(self) -> Dict[str, Any]:
         """
         Sorteio simples (aleatório), sem considerar peso.
         
@@ -148,12 +191,24 @@ class TeamDrawService:
             for i in range(self.num_teams)
         ]
         
-        for i, player in enumerate(shuffled_players):
+        substitutes = []
+        
+        if self.players_per_team:
+            total_in_teams = self.players_per_team * self.num_teams
+            players_for_teams = shuffled_players[:total_in_teams]
+            substitutes = shuffled_players[total_in_teams:]
+        else:
+            players_for_teams = shuffled_players
+        
+        for i, player in enumerate(players_for_teams):
             team_index = i % self.num_teams
             teams[team_index]["players"].append(player)
             teams[team_index]["total_skill"] += self._get_skill(player)
         
-        return teams
+        return {
+            "teams": teams,
+            "substitutes": substitutes
+        }
     
     def get_balance_info(self, teams: List[Dict[str, Any]]) -> Dict[str, Any]:
         """

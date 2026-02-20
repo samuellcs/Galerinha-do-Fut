@@ -1,210 +1,211 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/button';
 import { PlayerSelector } from '../components/PlayerSelector';
-import { ChevronLeft, MapPin, Clock, Calendar, UserPlus, Users, PlayCircle, Trophy, UserCog, X } from 'lucide-react';
-import { motion } from 'motion/react';
-
-const API_BASE = 'http://192.168.0.52:8006';
-
-interface PeladaPlayer {
-  id: number;
-  name: string;
-  displayName?: string;
-  display_name?: string;
-  avatar?: string;
-}
-
-interface PeladaDetail {
-  id: number;
-  name?: string;
-  date?: string;
-  time?: string;
-  location?: string;
-  status?: string;
-  confirmed_players?: PeladaPlayer[];
-  confirmedPlayers?: PeladaPlayer[];
-}
+import { ChevronLeft, UserPlus, Users, PlayCircle, Trophy, Clock, Swords } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { MatchHeader, MatchStats, PlayerGrid, SortTeamsButton } from '../components/match';
+import type { MatchPlayer, DrawnTeam } from '../components/match';
 
 export const MatchDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { matches, users, currentUser, generateTeams, teams, loadPeladasFromApi } = useApp();
+  const { matches, currentUser, generateTeams, teams, updateMatch } = useApp();
   const navigate = useNavigate();
   const [showPlayerSelector, setShowPlayerSelector] = useState(false);
-  const [peladaDetail, setPeladaDetail] = useState<PeladaDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(true);
+  const [players, setPlayers] = useState<MatchPlayer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [drawnTeams, setDrawnTeams] = useState<DrawnTeam[] | null>(null);
+  const [peladaFormat, setPeladaFormat] = useState<'4x4' | '5x5'>('5x5');
+  const [substitutes, setSubstitutes] = useState<MatchPlayer[]>([]);
 
   const match = matches.find(m => m.id === id);
   const matchTeams = teams.filter(t => t.matchId === id);
 
-  // Usar peladaDetail quando a pelada ainda não está em matches (ex.: após criar ou link direto)
-  const displayMatch = useMemo(() => {
-    if (match) return match;
-    if (!peladaDetail || !peladaDetail.name) return null;
-    const status = peladaDetail.status === 'open' || peladaDetail.status === 'active' || peladaDetail.status === 'finished'
-      ? peladaDetail.status
-      : 'open';
-    return {
-      id: String(peladaDetail.id),
-      name: peladaDetail.name,
-      date: peladaDetail.date ?? '',
-      time: peladaDetail.time ?? '',
-      location: peladaDetail.location ?? '',
-      status,
-      confirmedPlayerIds: []
-    };
-  }, [match, peladaDetail]);
+  const isAdmin = true;
 
-  // Se a URL tem id antigo (ex: m3), atualiza lista da API e redireciona para o id numérico da mesma pelada
-  useEffect(() => {
-    if (id == null || match == null || /^\d+$/.test(String(id))) return;
-    let cancelled = false;
-    (async () => {
-      const list = await loadPeladasFromApi();
-      if (cancelled || !list) return;
-      const found = list.find(m => m.name === match.name);
-      if (found) {
-        navigate(`/match/${found.id}`, { replace: true });
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [id, match?.name, navigate, loadPeladasFromApi]);
-
-  // Buscar detalhe da pelada (com jogadores confirmados) quando o id for numérico
-  useEffect(() => {
-    if (id == null || !/^\d+$/.test(String(id))) {
-      setPeladaDetail(null);
-      setDetailLoading(false);
-      return;
-    }
-    setDetailLoading(true);
-    let cancelled = false;
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setDetailLoading(false);
-      return;
-    }
-    fetch(`${API_BASE}/api/peladas/${id}/`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-    })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (cancelled) return;
-        if (data?.success && data?.data) {
-          setPeladaDetail(data.data);
-          loadPeladasFromApi();
-        } else {
-          setPeladaDetail(null);
-        }
-      })
-      .catch(() => { if (!cancelled) setPeladaDetail(null); })
-      .finally(() => { if (!cancelled) setDetailLoading(false); });
-    return () => { cancelled = true; };
-  }, [id, loadPeladasFromApi]);
-
-  // #region agent log
-  useEffect(() => {
-    if (id == null) return;
-    const isNumericId = /^\d+$/.test(String(id));
-    fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchDetailPage.tsx:params',message:'Match detail params',data:{id, matchId: match?.id, isNumericId, matchesCount: matches.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
-  }, [id, match?.id, matches.length]);
-  // #endregion
-
-  const confirmedPlayers = useMemo(() => {
-    if (!peladaDetail) return [];
-    const list = peladaDetail.confirmed_players ?? peladaDetail.confirmedPlayers ?? [];
-    return list.map(p => ({
-      id: String(p.id),
-      name: p.displayName ?? p.display_name ?? p.name,
-      avatar: p.avatar ?? (p.name || '').slice(0, 2).toUpperCase()
-    }));
-  }, [peladaDetail]);
-
-  const isAdmin = currentUser?.id === 'u1'; // TODO: Check if current user is admin
-
-  if (detailLoading && !displayMatch) {
-    return (
-      <div className="flex items-center justify-center py-12 text-gray-500">
-        Carregando pelada...
-      </div>
-    );
-  }
-  if (!displayMatch) {
-    return (
-      <div className="text-center py-12 text-gray-600">
-        Pelada não encontrada.
-      </div>
-    );
-  }
-
-  const handleDrawTeams = () => {
-    generateTeams(displayMatch.id);
-    navigate(`/match/${displayMatch.id}/draw`);
-  };
-
-  const handleAddPlayers = async (playerIds: number[]) => {
-    const url = `${API_BASE}/api/peladas/${id}/add-players/`;
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchDetailPage.tsx:handleAddPlayers:entry',message:'Add players called',data:{id, url, playerIdsCount: playerIds.length},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
-    if (id == null || !/^\d+$/.test(String(id))) {
-      alert('Esta pelada não está sincronizada com o servidor. Acesse a lista de peladas para ver as peladas disponíveis.');
-      return;
-    }
+  // Buscar detalhes da pelada da API
+  const fetchPeladaDetail = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(url, {
+      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Erro ao buscar pelada:', response.status);
+        return;
+      }
+
+      const data = await response.json();
+      if (data.success && data.data) {
+        const pelada = data.data;
+
+        // Set format from API
+        if (pelada.format) {
+          setPeladaFormat(pelada.format);
+        }
+
+        const rawPlayers = pelada.confirmedPlayers || pelada.confirmed_players || [];
+        const mapped: MatchPlayer[] = rawPlayers.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          nickname: p.nickname ?? '',
+          displayName: p.displayName ?? p.display_name ?? p.name,
+          skillLevel: p.skillLevel ?? p.skill_level ?? 5,
+          skillDisplay: p.skillDisplay ?? p.skill_display ?? '',
+          avatar: p.avatar ?? '',
+          position: p.position ?? undefined,
+          status: 'confirmed' as const,
+        }));
+
+        setPlayers(mapped);
+
+        const confirmedIds = (pelada.confirmedPlayerIds || pelada.confirmed_player_ids || []).map(String);
+        updateMatch(id!, {
+          status: pelada.status,
+          confirmedPlayerIds: confirmedIds,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar detalhes da pelada:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchPeladaDetail();
+  }, [fetchPeladaDetail]);
+
+  if (loading && !match) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <motion.div
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="text-zinc-500 text-sm"
+        >
+          Carregando partida...
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (!match) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-zinc-500">Pelada não encontrada</p>
+      </div>
+    );
+  }
+
+  const handleDrawTeams = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/draw-teams/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ player_ids: playerIds })
+        body: JSON.stringify({
+          numTeams: 2,
+          format: peladaFormat,
+        }),
       });
 
       const data = await response.json();
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchDetailPage.tsx:handleAddPlayers:response',message:'Add players response',data:{status: response.status, ok: response.ok, success: data?.success, errorMessage: data?.error?.message},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
-      // #endregion
+
+      if (data.success && data.data) {
+        const matchData = data.data.match;
+        const subsData = data.data.substitutes || [];
+
+        // Map teams from API response
+        const teamsFromApi: DrawnTeam[] = (matchData.teams || []).map((t: any) => ({
+          name: t.name,
+          players: (t.players || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            nickname: p.nickname ?? '',
+            displayName: p.displayName ?? p.display_name ?? p.name,
+            skillLevel: p.skillLevel ?? p.skill_level ?? 2,
+            skillDisplay: p.skillDisplay ?? p.skill_display ?? '',
+            avatar: p.avatar ?? '',
+            status: 'confirmed' as const,
+          })),
+        }));
+
+        setDrawnTeams(teamsFromApi);
+
+        // Map substitutes
+        const subsPlayers: MatchPlayer[] = subsData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          nickname: p.nickname ?? '',
+          displayName: p.displayName ?? p.display_name ?? p.name,
+          skillLevel: p.skillLevel ?? p.skill_level ?? 2,
+          skillDisplay: p.skillDisplay ?? p.skill_display ?? '',
+          avatar: p.avatar ?? '',
+          status: 'confirmed' as const,
+        }));
+        setSubstitutes(subsPlayers);
+
+        // Update local match state
+        updateMatch(id!, { status: 'active' });
+      } else {
+        alert(data.error?.message || 'Erro ao sortear times');
+      }
+    } catch (error) {
+      console.error('Erro ao sortear times:', error);
+      alert('Erro ao sortear times. Tente novamente.');
+    }
+  };
+
+  const handleAddPlayers = async (playerIds: number[]) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/add-players/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ player_ids: playerIds }),
+      });
+
+      const data = await response.json();
       if (data.success) {
-        if (data.data?.pelada) setPeladaDetail(data.data.pelada);
-        loadPeladasFromApi();
-        setShowPlayerSelector(false);
+        await fetchPeladaDetail();
       } else {
         alert(data.error?.message || 'Erro ao adicionar jogadores');
       }
     } catch (error) {
       console.error('Erro ao adicionar jogadores:', error);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchDetailPage.tsx:handleAddPlayers:catch',message:'Add players fetch error',data:{error: String(error)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       alert('Erro ao adicionar jogadores');
     }
   };
 
-  const handleRemovePlayer = async (playerId: string) => {
+  const handleRemovePlayer = async (playerId: number) => {
     if (!confirm('Deseja remover este jogador?')) return;
-    if (id == null || !/^\d+$/.test(String(id))) {
-      alert('Esta pelada não está sincronizada com o servidor.');
-      return;
-    }
+
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`${API_BASE}/api/peladas/${id}/remove-player/`, {
+      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/remove-player/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ player_id: playerId })
+        body: JSON.stringify({ player_id: playerId }),
       });
 
       const data = await response.json();
       if (data.success) {
-        if (data.data?.pelada) setPeladaDetail(data.data.pelada);
-        loadPeladasFromApi();
+        await fetchPeladaDetail();
       } else {
         alert(data.error?.message || 'Erro ao remover jogador');
       }
@@ -214,155 +215,314 @@ export const MatchDetailPage: React.FC = () => {
     }
   };
 
+  const confirmedCount = players.filter(p => p.status === 'confirmed').length;
+  const formatPlayersNeeded = peladaFormat === '5x5' ? 10 : 8;
+
+  const handleFormatChange = async (format: '4x4' | '5x5') => {
+    setPeladaFormat(format);
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ format }),
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar formato:', error);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
+    <div className="space-y-6 pb-24">
+      {/* Back navigation */}
+      <motion.div
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <Link to="/home">
-          <Button variant="ghost" size="sm" className="-ml-2">
-            <ChevronLeft className="w-5 h-5" />
+          <button className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white transition-colors duration-200 group cursor-pointer">
+            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
             Voltar
-          </Button>
+          </button>
         </Link>
-        <h1 className="text-xl font-bold truncate">{displayMatch.name}</h1>
-      </div>
+      </motion.div>
 
-      {/* Match Header Info */}
-      <Card className="bg-gradient-to-br from-[#1E7F43] to-[#3FB984] text-white border-none">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 opacity-90 mb-1">
-                <Calendar className="w-4 h-4" />
-                <span>{new Date(displayMatch.date).toLocaleDateString('pt-BR')}</span>
-              </div>
-              <div className="flex items-center gap-2 opacity-90 mb-1">
-                <Clock className="w-4 h-4" />
-                <span>{displayMatch.time}</span>
-              </div>
-              <div className="flex items-center gap-2 opacity-90">
-                <MapPin className="w-4 h-4" />
-                <span>{displayMatch.location}</span>
-              </div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-semibold border border-white/20">
-              {displayMatch.status === 'open' ? 'Aberta' : displayMatch.status === 'active' ? 'Em Jogo' : 'Finalizada'}
-            </div>
-          </div>
-        </div>
-      </Card>
+      {/* 1) Match Header */}
+      <MatchHeader match={match} />
 
-      {/* Player Selection */}
-      {displayMatch.status === 'open' && (
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div>
-              <h3 className="font-bold text-green-900 flex items-center gap-2">
-                <UserCog className="w-5 h-5" />
-                Adicionar Jogadores
-              </h3>
-              <p className="text-sm text-green-700">Escolha os jogadores confirmados para esta pelada</p>
-            </div>
-            <Button 
-              onClick={() => {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MatchDetailPage.tsx:openSelector',message:'Opening player selector',data:{id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-                // #endregion
-                setShowPlayerSelector(true);
-              }}
-              variant="primary"
-              className="w-full sm:w-auto shadow-md"
-            >
-              <UserPlus className="w-5 h-5" />
-              Escolher Jogadores
-            </Button>
+      {/* 2) Stats */}
+      <MatchStats players={players} />
+
+      {/* Add players CTA */}
+      {match.status === 'open' && isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5"
+        >
+          <div>
+            <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+              <UserPlus className="w-4 h-4 text-[#d4af37]" />
+              Gerenciar Elenco
+            </h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Adicionar ou remover jogadores desta pelada
+            </p>
           </div>
-        </Card>
+          <button
+            onClick={() => setShowPlayerSelector(true)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.08] text-sm font-medium text-white hover:bg-white/[0.1] transition-all duration-200 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            Escolher Jogadores
+          </button>
+        </motion.div>
       )}
 
-      {/* Confirmed Players List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Users className="w-5 h-5 text-gray-400" />
-            Jogadores Confirmados
-            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
-              {confirmedPlayers.length}
-            </span>
-          </h2>
-        </div>
+      {/* 3) Confirmed Players Grid */}
+      <PlayerGrid
+        players={players}
+        filter="confirmed"
+        onRemovePlayer={handleRemovePlayer}
+        canRemove={isAdmin && match.status === 'open'}
+      />
 
-        {confirmedPlayers.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {confirmedPlayers.map((player) => (
-              <motion.div 
-                key={player.id} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-white p-3 rounded-xl border border-gray-100 flex items-center gap-3 shadow-sm group relative"
+      {/* 4) Pending Players Grid */}
+      <PlayerGrid
+        players={players}
+        filter="pending"
+      />
+
+      {/* Drawn Teams Result */}
+      <AnimatePresence>
+        {drawnTeams && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="grid md:grid-cols-2 gap-4"
+          >
+            {drawnTeams.map((team, tIdx) => (
+              <motion.div
+                key={team.name}
+                initial={{ opacity: 0, x: tIdx === 0 ? -30 : 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 + tIdx * 0.15 }}
+                className={`rounded-2xl border p-5 ${
+                  tIdx === 0
+                    ? 'border-sky-500/20 bg-sky-500/[0.04]'
+                    : 'border-rose-500/20 bg-rose-500/[0.04]'
+                }`}
               >
-                <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm">
-                  {player.avatar}
+                <h3 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 ${
+                  tIdx === 0 ? 'text-sky-400' : 'text-rose-400'
+                }`}>
+                  <Users className="w-4 h-4" />
+                  {team.name}
+                  <span className="ml-auto text-xs font-normal text-zinc-500">
+                    {team.players.length} jogadores
+                  </span>
+                </h3>
+                <div className="space-y-2">
+                  {team.players.map((p, pIdx) => (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: 0.4 + pIdx * 0.06 }}
+                      className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/[0.03]"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        tIdx === 0
+                          ? 'bg-sky-500/15 text-sky-400'
+                          : 'bg-rose-500/15 text-rose-400'
+                      }`}>
+                        {p.avatar || p.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-sm text-white font-medium truncate flex-1">
+                        {p.displayName || p.name}
+                      </span>
+
+                    </motion.div>
+                  ))}
                 </div>
-                <div className="overflow-hidden flex-1">
-                  <p className="font-medium text-sm truncate">{player.name}</p>
-                  <p className="text-xs text-gray-400 truncate">Confirmado</p>
-                </div>
-                {isAdmin && displayMatch.status === 'open' && (
-                  <button
-                    onClick={() => handleRemovePlayer(String(player.id))}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
               </motion.div>
             ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            Ninguém confirmou ainda. {isAdmin && 'Adicione os primeiros jogadores!'}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {/* Admin / Action Buttons */}
-      <div className="pt-4 pb-20">
-        {displayMatch.status === 'open' && confirmedPlayers.length >= 2 && (
-          <Button onClick={handleDrawTeams} size="lg" className="w-full shadow-lg shadow-green-200">
-            <Users className="w-5 h-5" /> Sortear Times
-          </Button>
+      {/* Substitutes (de próxima) */}
+      <AnimatePresence>
+        {drawnTeams && substitutes.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5"
+          >
+            <h3 className="text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2 text-amber-400">
+              <Clock className="w-4 h-4" />
+              De Próxima
+              <span className="ml-auto text-xs font-normal text-zinc-500">
+                {substitutes.length} jogador{substitutes.length !== 1 ? 'es' : ''}
+              </span>
+            </h3>
+            <div className="space-y-2">
+              {substitutes.map((p, pIdx) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 0.5 + pIdx * 0.06 }}
+                  className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/[0.03]"
+                >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-amber-500/15 text-amber-400">
+                    {p.avatar || p.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-sm text-white font-medium truncate flex-1">
+                    {p.displayName || p.name}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {(displayMatch.status === 'active' || (displayMatch.status === 'finished' && matchTeams.length > 0)) && (
-           <div className="grid gap-3">
-             <Link to={`/match/${displayMatch.id}/draw`}>
-               <Button variant="secondary" className="w-full">
-                 <Users className="w-5 h-5" /> Ver Times
-               </Button>
-             </Link>
-             <Link to={`/match/${displayMatch.id}/game`}>
-               <Button size="lg" className="w-full shadow-lg shadow-green-200">
-                 {displayMatch.status === 'active' ? (
-                   <>
-                     <PlayCircle className="w-5 h-5" /> Ir para o Jogo
-                   </>
-                 ) : (
-                   <>
-                     <Trophy className="w-5 h-5" /> Ver Resultados
-                   </>
-                 )}
-               </Button>
-             </Link>
-           </div>
-        )}
-      </div>
+      {/* 5) Format Selector + Sort Teams */}
+      {match.status === 'open' && !drawnTeams && (
+        <>
+          {/* Format Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.35 }}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5"
+          >
+            <h3 className="font-semibold text-white text-sm flex items-center gap-2 mb-3">
+              <Swords className="w-4 h-4 text-[#d4af37]" />
+              Modalidade da Pelada
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleFormatChange('5x5')}
+                className={`relative py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  peladaFormat === '5x5'
+                    ? 'border-[#d4af37]/40 bg-[#d4af37]/10 text-[#d4af37]'
+                    : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06]'
+                }`}
+              >
+                <span className="text-lg">5 x 5</span>
+                <p className="text-[10px] mt-0.5 opacity-70">10 jogadores</p>
+                {peladaFormat === '5x5' && (
+                  <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#d4af37]" />
+                )}
+              </button>
+              <button
+                onClick={() => handleFormatChange('4x4')}
+                className={`relative py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                  peladaFormat === '4x4'
+                    ? 'border-[#d4af37]/40 bg-[#d4af37]/10 text-[#d4af37]'
+                    : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06]'
+                }`}
+              >
+                <span className="text-lg">4 x 4</span>
+                <p className="text-[10px] mt-0.5 opacity-70">8 jogadores</p>
+                {peladaFormat === '4x4' && (
+                  <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#d4af37]" />
+                )}
+              </button>
+            </div>
+            {confirmedCount > 0 && (
+              <p className="text-[11px] text-zinc-500 mt-3">
+                {confirmedCount} confirmado{confirmedCount !== 1 ? 's' : ''} · 
+                {' '}{formatPlayersNeeded} necessário{formatPlayersNeeded !== 1 ? 's' : ''} · 
+                {confirmedCount > formatPlayersNeeded 
+                  ? ` ${confirmedCount - formatPlayersNeeded} ficam de próxima`
+                  : confirmedCount === formatPlayersNeeded 
+                    ? ' Pronto para sortear!'
+                    : ` Faltam ${formatPlayersNeeded - confirmedCount}`
+                }
+              </p>
+            )}
+          </motion.div>
+
+          <SortTeamsButton
+            disabled={confirmedCount < formatPlayersNeeded}
+            onSort={handleDrawTeams}
+          />
+        </>
+      )}
+
+      {/* Post-draw navigation */}
+      {drawnTeams && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.6 }}
+          className="flex flex-col gap-3 items-center"
+        >
+          <Link to={`/match/${match.id}/draw`} className="w-full max-w-md">
+            <button className="w-full h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-sm font-medium text-white hover:bg-white/[0.1] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
+              <Users className="w-4 h-4" />
+              Ver Times Completos
+            </button>
+          </Link>
+          <Link to={`/match/${match.id}/game`} className="w-full max-w-md">
+            <button className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#e8c547] text-[#0B0B0F] text-sm font-bold hover:shadow-[0_0_32px_rgba(212,175,55,0.2)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
+              <PlayCircle className="w-4 h-4" />
+              Iniciar Partida
+            </button>
+          </Link>
+        </motion.div>
+      )}
+
+      {/* Active / Finished match actions */}
+      {(match.status === 'active' || (match.status === 'finished' && matchTeams.length > 0)) && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          className="flex flex-col gap-3 items-center pb-4"
+        >
+          <Link to={`/match/${match.id}/draw`} className="w-full max-w-md">
+            <button className="w-full h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-sm font-medium text-white hover:bg-white/[0.1] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
+              <Users className="w-4 h-4" />
+              Ver Times
+            </button>
+          </Link>
+          <Link to={`/match/${match.id}/game`} className="w-full max-w-md">
+            <button className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#e8c547] text-[#0B0B0F] text-sm font-bold hover:shadow-[0_0_32px_rgba(212,175,55,0.2)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
+              {match.status === 'active' ? (
+                <>
+                  <PlayCircle className="w-4 h-4" />
+                  Ir para o Jogo
+                </>
+              ) : (
+                <>
+                  <Trophy className="w-4 h-4" />
+                  Ver Resultados
+                </>
+              )}
+            </button>
+          </Link>
+        </motion.div>
+      )}
 
       {/* Player Selector Modal */}
       <PlayerSelector
         isOpen={showPlayerSelector}
         onClose={() => setShowPlayerSelector(false)}
         onConfirm={handleAddPlayers}
-        alreadyAddedIds={confirmedPlayers.map(p => Number(p.id))} // TODO: Fix this mapping
+        alreadyAddedIds={players.map(p => p.id)}
       />
     </div>
   );

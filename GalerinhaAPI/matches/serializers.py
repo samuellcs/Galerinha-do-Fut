@@ -34,23 +34,21 @@ class TeamSerializer(serializers.ModelSerializer):
         "id": 1,
         "name": "Time Verde",
         "players": [
-            { "id": 1, "name": "João", "skillLevel": 3, ... },
+            { "id": 1, "name": "João", ... },
             ...
         ],
         "playerIds": [1, 2, 3],
-        "totalSkill": 12,
         "goalsCount": 2
     }
     """
     
     players = serializers.SerializerMethodField()
     player_ids = serializers.SerializerMethodField()
-    total_skill = serializers.SerializerMethodField()
     goals_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Team
-        fields = ['id', 'name', 'players', 'player_ids', 'total_skill', 'goals_count']
+        fields = ['id', 'name', 'players', 'player_ids', 'goals_count']
     
     def get_players(self, obj) -> list:
         """Retorna jogadores do time."""
@@ -60,10 +58,6 @@ class TeamSerializer(serializers.ModelSerializer):
     def get_player_ids(self, obj) -> list:
         """Retorna IDs dos jogadores."""
         return list(obj.players.values_list('id', flat=True))
-    
-    def get_total_skill(self, obj) -> int:
-        """Retorna soma total dos pesos do time."""
-        return obj.total_skill
     
     def get_goals_count(self, obj) -> int:
         """Retorna total de gols do time."""

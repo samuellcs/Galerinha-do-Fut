@@ -14,6 +14,7 @@ export interface Match {
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   location: string;
+  format?: '4x4' | '5x5';
   status: 'open' | 'active' | 'finished';
   confirmedPlayerIds: string[];
 }
@@ -44,12 +45,12 @@ interface AppContextType {
   registerUser: (name: string, email: string) => void;
   createMatch: (match: Omit<Match, 'id' | 'status' | 'confirmedPlayerIds'>) => Promise<string>;
   confirmPresence: (matchId: string) => void;
+  updateMatch: (matchId: string, data: Partial<Match>) => void;
   generateTeams: (matchId: string) => void;
   addGameEvent: (matchId: string, playerId: string, type: 'goal' | 'assist') => void;
   finishMatch: (matchId: string) => void;
   getMatchStats: (matchId: string) => { [playerId: string]: { goals: number; assists: number } };
   getGlobalStats: () => { playerId: string; goals: number; assists: number }[];
-  loadPeladasFromApi: () => Promise<Match[] | null>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -96,41 +97,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const saved = localStorage.getItem('gameEvents');
     return saved ? JSON.parse(saved) : INITIAL_EVENTS;
   });
-
-  const loadPeladasFromApi = React.useCallback(async (): Promise<Match[] | null> => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return null;
-    try {
-      const res = await fetch('http://192.168.0.52:8006/api/peladas/', {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-      });
-      const data = res.ok ? await res.json() : null;
-      if (data?.success && Array.isArray(data.data)) {
-        const fromApi: Match[] = data.data.map((p: { id: number; name: string; date: string; time: string; location: string; status: string; confirmed_player_ids?: number[]; confirmedPlayerIds?: number[] }) => {
-          const ids = p.confirmed_player_ids ?? p.confirmedPlayerIds ?? [];
-          return {
-            id: String(p.id),
-            name: p.name,
-            date: p.date,
-            time: p.time,
-            location: p.location,
-            status: (p.status === 'open' || p.status === 'active' || p.status === 'finished') ? p.status : 'open',
-            confirmedPlayerIds: ids.map(String),
-          };
-        });
-        setMatches(fromApi);
-        return fromApi;
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  }, []);
-
-  // Carregar peladas da API ao iniciar e após login para ter ids numéricos
-  useEffect(() => {
-    loadPeladasFromApi();
-  }, [currentUser, loadPeladasFromApi]);
 
   // Persistir currentUser no localStorage
   useEffect(() => {
@@ -219,6 +185,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           date: data.data.date,
           time: data.data.time,
           location: data.data.location,
+          format: data.data.format || '5x5',
           status: data.data.status || 'open',
           confirmedPlayerIds: [],
         };
@@ -239,6 +206,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setMatches([newMatch, ...matches]);
       return newMatch.id;
     }
+  };
+
+  const updateMatch = (matchId: string, data: Partial<Match>) => {
+    setMatches(prev => prev.map(m => 
+      m.id === matchId ? { ...m, ...data } : m
+    ));
   };
 
   const confirmPresence = (matchId: string) => {
@@ -321,9 +294,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={{
       currentUser, users, matches, teams, gameEvents,
-      login, logout, registerUser, createMatch, confirmPresence,
-      generateTeams, addGameEvent, finishMatch, getMatchStats, getGlobalStats,
-      loadPeladasFromApi
+      login, logout, registerUser, createMatch, confirmPresence, updateMatch,
+      generateTeams, addGameEvent, finishMatch, getMatchStats, getGlobalStats
     }}>
       {children}
     </AppContext.Provider>

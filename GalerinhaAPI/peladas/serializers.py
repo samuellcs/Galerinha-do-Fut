@@ -100,7 +100,6 @@ class PeladaDetailSerializer(serializers.ModelSerializer):
     confirmed_count = serializers.SerializerMethodField()
     players_needed = serializers.IntegerField(read_only=True)
     team_size = serializers.IntegerField(read_only=True)
-    total_skill = serializers.SerializerMethodField()
     created_by = UserSerializer(read_only=True)
     can_draw_teams = serializers.SerializerMethodField()
     
@@ -109,7 +108,7 @@ class PeladaDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'date', 'time', 'location', 'format', 'status',
             'confirmed_players', 'confirmed_player_ids', 'confirmed_count',
-            'players_needed', 'team_size', 'total_skill',
+            'players_needed', 'team_size',
             'created_by', 'can_draw_teams',
             'created_at', 'updated_at'
         ]
@@ -126,10 +125,6 @@ class PeladaDetailSerializer(serializers.ModelSerializer):
     def get_confirmed_count(self, obj) -> int:
         """Retorna quantidade de jogadores confirmados."""
         return obj.players.count()
-    
-    def get_total_skill(self, obj) -> int:
-        """Retorna soma total dos pesos dos jogadores."""
-        return sum(p.skill_level for p in obj.players.all())
     
     def get_can_draw_teams(self, obj) -> bool:
         """Verifica se pode sortear times."""
@@ -194,6 +189,9 @@ class PeladaCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         """Valida combinação de data e hora."""
+        from datetime import datetime, timezone
+        import pytz
+        
         date_val = attrs.get('date')
         time_val = attrs.get('time')
         

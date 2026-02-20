@@ -19,23 +19,23 @@ class PlayerSerializer(serializers.ModelSerializer):
         "name": "João Silva",
         "nickname": "Joãozinho",
         "displayName": "Joãozinho",
-        "skillLevel": 3,
-        "skillDisplay": "Bom",
         "avatar": "JS"
     }
+    
+    Nota: skillLevel não é exposto ao frontend para evitar
+    exibição de ranking/estrelas. O peso é usado apenas internamente
+    pelo algoritmo de sorteio equilibrado.
     """
     
     displayName = serializers.CharField(source='display_name', read_only=True)
-    skillLevel = serializers.IntegerField(source='skill_level')
-    skillDisplay = serializers.CharField(source='skill_display', read_only=True)
     
     class Meta:
         model = Player
         fields = [
             'id', 'name', 'nickname', 'displayName',
-            'skillLevel', 'skillDisplay', 'avatar', 'is_active'
+            'avatar', 'is_active'
         ]
-        read_only_fields = ['id', 'avatar', 'displayName', 'skillDisplay']
+        read_only_fields = ['id', 'avatar', 'displayName']
 
 
 class PlayerCreateSerializer(serializers.ModelSerializer):
@@ -71,12 +71,10 @@ class PlayerListSerializer(serializers.ModelSerializer):
     """
     
     displayName = serializers.CharField(source='display_name', read_only=True)
-    skillLevel = serializers.IntegerField(source='skill_level')
-    skillDisplay = serializers.CharField(source='skill_display', read_only=True)
     
     class Meta:
         model = Player
         fields = [
             'id', 'name', 'nickname', 'displayName',
-            'skillLevel', 'skillDisplay', 'avatar'
+            'avatar'
         ]

@@ -405,6 +405,12 @@ class PeladaViewSet(viewsets.ModelViewSet):
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
         
+        # Atualiza formato se enviado no request
+        req_format = request.data.get('format')
+        if req_format and req_format in ('4x4', '5x5'):
+            pelada.format = req_format
+            pelada.save(update_fields=['format'])
+        
         if not pelada.can_draw_teams():
             return Response({
                 'success': False,
@@ -418,10 +424,17 @@ class PeladaViewSet(viewsets.ModelViewSet):
         num_teams = request.data.get('numTeams', 2)
         team_names = request.data.get('teamNames', None)
         
-        # Executa sorteio balanceado
+        # Executa sorteio balanceado com base no formato
         confirmed_players = list(pelada.players.all())
-        draw_service = TeamDrawService(confirmed_players, num_teams, team_names)
-        teams_data = draw_service.draw()
+        draw_service = TeamDrawService(
+            confirmed_players, 
+            num_teams, 
+            players_per_team=pelada.team_size,
+            team_names=team_names
+        )
+        draw_result = draw_service.draw()
+        teams_data = draw_result['teams']
+        substitutes = draw_result['substitutes']
         
         # Obtém informações de balanceamento
         balance_info = draw_service.get_balance_info(teams_data)
@@ -450,14 +463,17 @@ class PeladaViewSet(viewsets.ModelViewSet):
         
         # Serializa resposta
         from matches.serializers import MatchDetailSerializer
+        from players.serializers import PlayerSerializer
         match_serializer = MatchDetailSerializer(match, context={'request': request})
         pelada_serializer = PeladaDetailSerializer(pelada, context={'request': request})
+        substitutes_serializer = PlayerSerializer(substitutes, many=True)
         
         return Response({
             'success': True,
             'message': 'Times sorteados com sucesso!',
             'data': {
                 'match': match_serializer.data,
+                'substitutes': substitutes_serializer.data,
                 'balanceInfo': balance_info,
                 'pelada': pelada_serializer.data
             }

@@ -17,24 +17,24 @@ export const RankingPage: React.FC = () => {
 
   const getMedalColor = (index: number) => {
     switch (index) {
-      case 0: return 'text-yellow-500';
-      case 1: return 'text-gray-400';
-      case 2: return 'text-amber-700';
-      default: return 'text-gray-300';
+      case 0: return 'text-primary';
+      case 1: return 'text-muted-foreground';
+      case 2: return 'text-primary/80';
+      default: return 'text-muted-foreground';
     }
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Ranking da Galera</h1>
+      <h1 className="text-2xl font-bold text-foreground">Ranking da Galera</h1>
 
       {/* Tabs */}
-      <div className="flex p-1 bg-gray-100 rounded-xl">
+      <div className="flex p-1 bg-muted rounded-xl">
         <button
           onClick={() => setTab('goals')}
           className={clsx(
             "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-            tab === 'goals' ? "bg-white text-[#1E7F43] shadow-sm" : "text-gray-500 hover:text-gray-700"
+            tab === 'goals' ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
           )}
         >
           Artilheiros ⚽
@@ -43,7 +43,7 @@ export const RankingPage: React.FC = () => {
           onClick={() => setTab('assists')}
           className={clsx(
             "flex-1 py-2 rounded-lg text-sm font-medium transition-all",
-            tab === 'assists' ? "bg-white text-[#1E7F43] shadow-sm" : "text-gray-500 hover:text-gray-700"
+            tab === 'assists' ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
           )}
         >
           Assistências 👟
@@ -70,18 +70,18 @@ export const RankingPage: React.FC = () => {
                   {index < 3 ? <Medal className="w-6 h-6 mx-auto" /> : index + 1}
                 </div>
                 
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-600 border-2 border-white shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-foreground border-2 border-border shadow-sm">
                   {user.avatar}
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className="font-bold text-gray-900">{user.name}</h3>
-                  <p className="text-xs text-gray-500">
+                  <h3 className="font-bold text-foreground">{user.name}</h3>
+                  <p className="text-xs text-muted-foreground">
                     {tab === 'goals' ? 'Gols marcados' : 'Assistências realizadas'}
                   </p>
                 </div>
                 
-                <div className="text-2xl font-bold text-[#1E7F43]">
+                <div className="text-2xl font-bold text-primary">
                   {value}
                 </div>
               </Card>
@@ -90,7 +90,7 @@ export const RankingPage: React.FC = () => {
         })}
 
         {sortedStats.every(s => s[tab] === 0) && (
-          <div className="text-center py-10 text-gray-400">
+          <div className="text-center py-10 text-muted-foreground">
             Nenhuma estatística registrada ainda.
           </div>
         )}

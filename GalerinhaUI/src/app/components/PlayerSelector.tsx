@@ -38,40 +38,29 @@ export const PlayerSelector: React.FC<PlayerSelectorProps> = ({
   }, [isOpen]);
 
   const loadPlayers = async () => {
-    const playersUrl = 'http://192.168.0.52:8006/api/players/';
     setLoading(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PlayerSelector.tsx:loadPlayers:entry',message:'Loading players',data:{url: playersUrl},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(playersUrl, {
+      const response = await fetch('http://192.168.0.52:8006/api/players/', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json'
         }
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PlayerSelector.tsx:loadPlayers:response',message:'Players response',data:{status: response.status, ok: response.ok},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
-
+      
       if (!response.ok) {
         console.error('Erro ao carregar jogadores:', response.status);
         return;
       }
-
+      
       const data = await response.json();
       console.log('Players loaded:', data);
-
+      
       // A API retorna uma lista diretamente ou {success, data}?
       const playersList = Array.isArray(data) ? data : (data.success ? data.data : []);
       setPlayers(playersList || []);
     } catch (error) {
       console.error('Erro ao carregar jogadores:', error);
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/e1d88f39-c059-4d97-9c63-9272de5c0394',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'PlayerSelector.tsx:loadPlayers:catch',message:'Players fetch error',data:{error: String(error)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
     } finally {
       setLoading(false);
     }

@@ -55,7 +55,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1E7F43] to-[#3FB984] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-primary/20 p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -65,8 +65,8 @@ export const LoginPage: React.FC = () => {
         <Card className="p-8 shadow-xl border-0">
           <div className="text-center mb-8">
             <div className="text-4xl mb-2">⚽</div>
-            <h1 className="text-2xl font-bold text-[#1E7F43]">GalerinhaDoFut</h1>
-            <p className="text-gray-500 text-sm mt-1">Organize suas peladas com facilidade</p>
+            <h1 className="text-2xl font-bold text-primary">GalerinhaDoFut</h1>
+            <p className="text-muted-foreground text-sm mt-1">Organize suas peladas com facilidade</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -93,7 +93,7 @@ export const LoginPage: React.FC = () => {
             />
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="text-sm text-destructive bg-destructive/20 p-3 rounded-md">
                 {error}
               </div>
             )}
@@ -102,7 +102,7 @@ export const LoginPage: React.FC = () => {
               <Button 
                 type="submit" 
                 size="lg" 
-                className="w-full shadow-lg shadow-green-200"
+                className="w-full shadow-lg shadow-primary/30"
                 disabled={isLoading}
               >
                 {isLoading ? 'Entrando...' : 'Entrar'}

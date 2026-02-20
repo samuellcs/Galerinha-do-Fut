@@ -16,7 +16,7 @@ export const GameRegisterPage: React.FC = () => {
   const matchTeams = teams.filter(t => t.matchId === id);
   const stats = useMemo(() => match ? getMatchStats(match.id) : {}, [match, getMatchStats]);
 
-  if (!match) return <div>Pelada não encontrada</div>;
+  if (!match) return <div className="text-foreground">Pelada não encontrada</div>;
 
   const getPlayer = (pid: string) => users.find(u => u.id === pid);
 
@@ -57,14 +57,14 @@ export const GameRegisterPage: React.FC = () => {
         </div>
         
         {match.status !== 'finished' && (
-          <Button variant="danger" size="sm" onClick={handleFinish}>
+          <Button variant="destructive" size="sm" onClick={handleFinish}>
             Finalizar Jogo
           </Button>
         )}
       </div>
 
       {/* Scoreboard */}
-      <Card className="bg-[#1E7F43] text-white p-6 flex items-center justify-center gap-8 shadow-lg">
+      <Card className="bg-primary text-primary-foreground p-6 flex items-center justify-center gap-8 shadow-lg">
         <div className="text-center">
           <h3 className="text-sm opacity-80 mb-1">{matchTeams[0]?.name || 'Time A'}</h3>
           <span className="text-5xl font-bold">{getTeamScore(matchTeams[0]?.id)}</span>
@@ -79,7 +79,7 @@ export const GameRegisterPage: React.FC = () => {
       <div className="grid md:grid-cols-2 gap-6">
         {matchTeams.map((team) => (
           <div key={team.id} className="space-y-3">
-            <h3 className="font-bold text-gray-700 px-1">{team.name}</h3>
+            <h3 className="font-bold text-foreground px-1">{team.name}</h3>
             {team.playerIds.map(pid => {
               const player = getPlayer(pid);
               if (!player) return null;
@@ -89,15 +89,15 @@ export const GameRegisterPage: React.FC = () => {
                 <motion.div 
                   layout
                   key={pid} 
-                  className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between"
+                  className="bg-card p-3 rounded-xl border border-border shadow-sm flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-xs font-bold">
+                    <div className="w-10 h-10 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-bold">
                       {player.avatar}
                     </div>
                     <div>
-                      <p className="font-medium text-sm leading-tight">{player.name}</p>
-                      <div className="flex gap-2 text-xs text-gray-500 mt-1">
+                      <p className="font-medium text-sm leading-tight text-foreground">{player.name}</p>
+                      <div className="flex gap-2 text-xs text-muted-foreground mt-1">
                         <span>⚽ {playerStats.goals}</span>
                         <span>👟 {playerStats.assists}</span>
                       </div>
@@ -108,7 +108,7 @@ export const GameRegisterPage: React.FC = () => {
                      <button
                        onClick={() => handleGoal(pid)}
                        disabled={match.status === 'finished'}
-                       className="w-10 h-10 rounded-full bg-green-50 text-green-700 hover:bg-green-100 flex items-center justify-center transition-colors disabled:opacity-50"
+                       className="w-10 h-10 rounded-full bg-primary/20 text-primary hover:bg-primary/30 flex items-center justify-center transition-colors disabled:opacity-50"
                        title="Gol"
                      >
                        ⚽
@@ -116,7 +116,7 @@ export const GameRegisterPage: React.FC = () => {
                      <button
                        onClick={() => handleAssist(pid)}
                        disabled={match.status === 'finished'}
-                       className="w-10 h-10 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center justify-center transition-colors disabled:opacity-50"
+                       className="w-10 h-10 rounded-full bg-primary/15 text-primary hover:bg-primary/25 flex items-center justify-center transition-colors disabled:opacity-50"
                        title="Assistência"
                      >
                        👟
@@ -130,7 +130,7 @@ export const GameRegisterPage: React.FC = () => {
       </div>
       
       {match.status === 'finished' && (
-        <div className="p-4 bg-gray-100 text-center text-gray-500 rounded-xl">
+        <div className="p-4 bg-muted text-center text-muted-foreground rounded-xl">
           Partida finalizada. Estatísticas congeladas.
         </div>
       )}
