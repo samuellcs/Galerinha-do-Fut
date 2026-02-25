@@ -396,12 +396,12 @@ class PeladaViewSet(viewsets.ModelViewSet):
         pelada = self.get_object()
         
         # Validações
-        if not pelada.is_open:
+        if pelada.is_finished:
             return Response({
                 'success': False,
                 'error': {
-                    'code': 'PELADA_NOT_OPEN',
-                    'message': 'Esta pelada não está aberta para sorteio.'
+                    'code': 'PELADA_FINISHED',
+                    'message': 'Esta pelada já foi encerrada.'
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
         
@@ -477,4 +477,127 @@ class PeladaViewSet(viewsets.ModelViewSet):
                 'balanceInfo': balance_info,
                 'pelada': pelada_serializer.data
             }
+        })
+
+    @action(detail=True, methods=['post'], url_path='substitute-match')
+    def substitute_match(self, request, pk=None):
+        """
+        POST /api/peladas/{id}/substitute-match/
+
+        Cria nova partida com composição exata dos times (usado após substituições).
+        O time vencedor é mantido e o time perdedor recebe as substituições.
+
+        Request Body:
+        {
+            "teams": [
+                { "name": "Time Verde", "player_ids": [1, 2, 3, 4, 5] },
+                { "name": "Time Branco", "player_ids": [6, 7, 8, 9, 10] }
+            ]
+        }
+        """
+        pelada = self.get_object()
+
+        if pelada.is_finished:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'PELADA_FINISHED',
+                    'message': 'Esta pelada já foi encerrada.'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        teams_input = request.data.get('teams', [])
+        if len(teams_input) < 2:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'INVALID_TEAMS',
+                    'message': 'São necessários pelo menos 2 times.'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Valida que todos os jogadores existem
+        all_ids = []
+        for t in teams_input:
+            ids = t.get('player_ids', [])
+            if not ids:
+                return Response({
+                    'success': False,
+                    'error': {
+                        'code': 'EMPTY_TEAM',
+                        'message': f'Time "{t.get("name", "?")}" não tem jogadores.'
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+            all_ids.extend(ids)
+
+        players_qs = Player.objects.filter(id__in=all_ids)
+        found_ids = set(players_qs.values_list('id', flat=True))
+        missing = set(all_ids) - found_ids
+        if missing:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'PLAYERS_NOT_FOUND',
+                    'message': f'Jogadores não encontrados: {list(missing)}'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        match = Match.objects.create(pelada=pelada, status='active')
+
+        from matches.models import Team, TeamPlayer
+        for team_input in teams_input:
+            team = Team.objects.create(match=match, name=team_input['name'])
+            for pid in team_input['player_ids']:
+                TeamPlayer.objects.create(team=team, player_id=pid)
+
+        pelada.status = 'active'
+        pelada.save()
+
+        from matches.serializers import MatchDetailSerializer
+        match_serializer = MatchDetailSerializer(match, context={'request': request})
+        pelada_serializer = PeladaDetailSerializer(pelada, context={'request': request})
+
+        return Response({
+            'success': True,
+            'message': 'Nova partida criada com substituições!',
+            'data': {
+                'match': match_serializer.data,
+                'pelada': pelada_serializer.data
+            }
+        })
+
+    @action(detail=True, methods=['post'], url_path='finish')
+    def finish(self, request, pk=None):
+        """
+        POST /api/peladas/{id}/finish/
+
+        Encerra a pelada (e finaliza qualquer partida ativa).
+        """
+        pelada = self.get_object()
+
+        if pelada.is_finished:
+            return Response({
+                'success': False,
+                'error': {
+                    'code': 'ALREADY_FINISHED',
+                    'message': 'Esta pelada já foi encerrada.'
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Finaliza qualquer partida ativa
+        from matches.models import Match as MatchModel
+        from django.utils import timezone as tz
+        MatchModel.objects.filter(pelada=pelada, status='active').update(
+            status='finished',
+            finished_at=tz.now()
+        )
+
+        pelada.status = 'finished'
+        pelada.save()
+
+        serializer = PeladaDetailSerializer(pelada, context={'request': request})
+        return Response({
+            'success': True,
+            'message': 'Pelada encerrada!',
+            'data': serializer.data
         })

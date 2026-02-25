@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { LogOut, User as UserIcon, Trophy, Calendar, Plus } from 'lucide-react';
+import { LogOut, Trophy, Calendar } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { Button } from './ui/Button';
 
@@ -41,14 +41,9 @@ export const Header: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
-              {currentUser.avatar}
-            </div>
-            <span className="hidden sm:block text-sm font-medium text-foreground">
-              {currentUser.name.split(' ')[0]}
-            </span>
-          </div>
+          <span className="hidden sm:block text-sm font-medium text-foreground">
+            {currentUser.name.split(' ')[0]}
+          </span>
           <button 
             onClick={handleLogout}
             className="text-muted-foreground hover:text-destructive transition-colors p-1"

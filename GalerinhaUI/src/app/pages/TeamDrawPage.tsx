@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useParams, useNavigate, Link } from 'react-router';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ChevronLeft, RefreshCw, PlayCircle, Clock } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Trophy, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface TeamDrawPlayer {
@@ -131,7 +131,7 @@ export const TeamDrawPage: React.FC = () => {
                       <div className="w-8 h-8 rounded-full bg-muted text-foreground flex items-center justify-center text-xs font-bold">
                         {player.avatar}
                       </div>
-                      <span className="text-foreground font-medium">{player.name}</span>
+                      <span className="text-foreground font-medium">{(player as any).displayName || (player as any).nickname || player.name}</span>
                     </li>
                   );
                 })}
@@ -185,10 +185,10 @@ export const TeamDrawPage: React.FC = () => {
         <Button 
           onClick={handleStartGame} 
           size="lg" 
-          className="flex-1 shadow-lg shadow-green-200"
+          className="flex-1 shadow-lg shadow-yellow-200"
         >
-          <PlayCircle className="w-5 h-5" /> 
-          {match.status === 'active' || match.status === 'finished' ? 'Ir para o Jogo' : 'Iniciar Jogo'}
+          <Trophy className="w-5 h-5" /> 
+          {match.status === 'finished' ? 'Ver Resultados' : 'Informar Resultados'}
         </Button>
       </div>
     </div>

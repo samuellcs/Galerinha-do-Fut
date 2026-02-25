@@ -198,7 +198,7 @@ class AddStatsSerializer(serializers.Serializer):
         """Valida se jogador existe e está na partida."""
         match = self.context.get('match')
         
-        if not User.objects.filter(id=value).exists():
+        if not Player.objects.filter(id=value).exists():
             raise serializers.ValidationError('Jogador não encontrado.')
         
         # Verifica se jogador está em algum time da partida

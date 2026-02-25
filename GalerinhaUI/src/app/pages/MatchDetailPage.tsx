@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Button } from '../components/ui/button';
+import { Button } from '../components/ui/Button';
 import { PlayerSelector } from '../components/PlayerSelector';
-import { ChevronLeft, UserPlus, Users, PlayCircle, Trophy, Clock, Swords } from 'lucide-react';
+import { ChevronLeft, UserPlus, Users, Trophy, Clock, Swords, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MatchHeader, MatchStats, PlayerGrid, SortTeamsButton } from '../components/match';
 import type { MatchPlayer, DrawnTeam } from '../components/match';
@@ -18,6 +18,8 @@ export const MatchDetailPage: React.FC = () => {
   const [drawnTeams, setDrawnTeams] = useState<DrawnTeam[] | null>(null);
   const [peladaFormat, setPeladaFormat] = useState<'4x4' | '5x5'>('5x5');
   const [substitutes, setSubstitutes] = useState<MatchPlayer[]>([]);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const match = matches.find(m => m.id === id);
   const matchTeams = teams.filter(t => t.matchId === id);
@@ -66,6 +68,11 @@ export const MatchDetailPage: React.FC = () => {
 
         const confirmedIds = (pelada.confirmedPlayerIds || pelada.confirmed_player_ids || []).map(String);
         updateMatch(id!, {
+          name: pelada.name,
+          date: pelada.date,
+          time: pelada.time,
+          location: pelada.location,
+          format: pelada.format || '5x5',
           status: pelada.status,
           confirmedPlayerIds: confirmedIds,
         });
@@ -81,7 +88,7 @@ export const MatchDetailPage: React.FC = () => {
     fetchPeladaDetail();
   }, [fetchPeladaDetail]);
 
-  if (loading && !match) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <motion.div
@@ -97,8 +104,14 @@ export const MatchDetailPage: React.FC = () => {
 
   if (!match) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <p className="text-zinc-500">Pelada não encontrada</p>
+        <Link to="/home">
+          <button className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors duration-200 group cursor-pointer">
+            <ChevronLeft className="w-4 h-4" />
+            Voltar para o início
+          </button>
+        </Link>
       </div>
     );
   }
@@ -218,6 +231,29 @@ export const MatchDetailPage: React.FC = () => {
   const confirmedCount = players.filter(p => p.status === 'confirmed').length;
   const formatPlayersNeeded = peladaFormat === '5x5' ? 10 : 8;
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.ok || response.status === 204) {
+        navigate('/home');
+      } else {
+        const data = await response.json().catch(() => ({}));
+        alert(data.detail || 'Erro ao apagar pelada.');
+      }
+    } catch (error) {
+      console.error('Erro ao apagar pelada:', error);
+      alert('Erro ao apagar pelada.');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const handleFormatChange = async (format: '4x4' | '5x5') => {
     setPeladaFormat(format);
     try {
@@ -242,6 +278,7 @@ export const MatchDetailPage: React.FC = () => {
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
+        className="flex items-center justify-between"
       >
         <Link to="/home">
           <button className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white transition-colors duration-200 group cursor-pointer">
@@ -249,13 +286,84 @@ export const MatchDetailPage: React.FC = () => {
             Voltar
           </button>
         </Link>
+
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="inline-flex items-center gap-1.5 text-xs text-zinc-600 hover:text-rose-400 transition-colors duration-200 cursor-pointer"
+          title="Apagar pelada"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          Apagar
+        </button>
       </motion.div>
+
+      {/* Modal de confirmação de exclusão */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={() => !deleting && setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-2xl border border-rose-500/20 bg-[#0B0B0F] p-6 space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="w-5 h-5 text-rose-400" />
+                </div>
+                <div>
+                  <p className="text-white font-semibold">Apagar pelada?</p>
+                  <p className="text-zinc-500 text-xs mt-0.5">
+                    Todos os jogadores, partidas e estatísticas serão removidos. Essa ação não pode ser desfeita.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="flex-1 h-10 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 text-sm font-semibold text-rose-400 hover:bg-rose-500/25 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleting ? (
+                    <>
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-3.5 h-3.5 border-2 border-rose-400/30 border-t-rose-400 rounded-full" />
+                      Apagando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Apagar
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 1) Match Header */}
       <MatchHeader match={match} />
 
       {/* 2) Stats */}
-      <MatchStats players={players} />
+      <MatchStats players={players} format={peladaFormat} />
 
       {/* Add players CTA */}
       {match.status === 'open' && isAdmin && (
@@ -444,7 +552,7 @@ export const MatchDetailPage: React.FC = () => {
             {confirmedCount > 0 && (
               <p className="text-[11px] text-zinc-500 mt-3">
                 {confirmedCount} confirmado{confirmedCount !== 1 ? 's' : ''} · 
-                {' '}{formatPlayersNeeded} necessário{formatPlayersNeeded !== 1 ? 's' : ''} · 
+                {' '}{formatPlayersNeeded} necessários · 
                 {confirmedCount > formatPlayersNeeded 
                   ? ` ${confirmedCount - formatPlayersNeeded} ficam de próxima`
                   : confirmedCount === formatPlayersNeeded 
@@ -470,48 +578,27 @@ export const MatchDetailPage: React.FC = () => {
           transition={{ duration: 0.4, delay: 0.6 }}
           className="flex flex-col gap-3 items-center"
         >
-          <Link to={`/match/${match.id}/draw`} className="w-full max-w-md">
-            <button className="w-full h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-sm font-medium text-white hover:bg-white/[0.1] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
-              <Users className="w-4 h-4" />
-              Ver Times Completos
-            </button>
-          </Link>
           <Link to={`/match/${match.id}/game`} className="w-full max-w-md">
             <button className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#e8c547] text-[#0B0B0F] text-sm font-bold hover:shadow-[0_0_32px_rgba(212,175,55,0.2)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
-              <PlayCircle className="w-4 h-4" />
-              Iniciar Partida
+              <Trophy className="w-4 h-4" />
+              Informar Resultados
             </button>
           </Link>
         </motion.div>
       )}
 
       {/* Active / Finished match actions */}
-      {(match.status === 'active' || (match.status === 'finished' && matchTeams.length > 0)) && (
+      {(match.status === 'active' || match.status === 'finished') && !drawnTeams && (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
           className="flex flex-col gap-3 items-center pb-4"
         >
-          <Link to={`/match/${match.id}/draw`} className="w-full max-w-md">
-            <button className="w-full h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-sm font-medium text-white hover:bg-white/[0.1] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer">
-              <Users className="w-4 h-4" />
-              Ver Times
-            </button>
-          </Link>
           <Link to={`/match/${match.id}/game`} className="w-full max-w-md">
             <button className="w-full h-12 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#e8c547] text-[#0B0B0F] text-sm font-bold hover:shadow-[0_0_32px_rgba(212,175,55,0.2)] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
-              {match.status === 'active' ? (
-                <>
-                  <PlayCircle className="w-4 h-4" />
-                  Ir para o Jogo
-                </>
-              ) : (
-                <>
-                  <Trophy className="w-4 h-4" />
-                  Ver Resultados
-                </>
-              )}
+              <Trophy className="w-4 h-4" />
+              {match.status === 'finished' ? 'Ver Resultados' : 'Informar Resultados'}
             </button>
           </Link>
         </motion.div>

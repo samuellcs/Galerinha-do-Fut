@@ -5,6 +5,7 @@ import type { MatchPlayer } from './types';
 
 interface MatchStatsProps {
   players: MatchPlayer[];
+  format?: '4x4' | '5x5';
 }
 
 interface StatCardProps {
@@ -36,13 +37,12 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, accent = 'text-
   </motion.div>
 );
 
-export const MatchStats: React.FC<MatchStatsProps> = ({ players }) => {
+export const MatchStats: React.FC<MatchStatsProps> = ({ players, format }) => {
   const confirmed = players.filter(p => p.status === 'confirmed');
   const pending = players.filter(p => p.status === 'pending');
 
-  const half = Math.ceil(confirmed.length / 2);
-  const division = confirmed.length >= 2
-    ? `${half} vs ${confirmed.length - half}`
+  const division = format
+    ? format.replace('x', ' x ')   // '5x5' → '5 x 5'
     : '—';
 
   return (

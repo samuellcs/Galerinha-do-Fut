@@ -198,19 +198,31 @@ export const CreateMatchPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Formato
             </label>
-            <select
-              id="format"
-              value={formData.format}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              required
-            >
-              <option value="4x4">4 x 4 (8 jogadores)</option>
-              <option value="5x5">5 x 5 (10 jogadores)</option>
-            </select>
+            <div className="grid grid-cols-2 gap-3">
+              {(['5x5', '4x4'] as const).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, format: fmt })}
+                  className={`relative py-3 px-4 rounded-xl border text-sm font-semibold transition-all duration-200 cursor-pointer ${
+                    formData.format === fmt
+                      ? 'border-[#d4af37]/40 bg-[#d4af37]/10 text-[#d4af37]'
+                      : 'border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:bg-white/[0.06] hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="text-lg">{fmt === '5x5' ? '5 x 5' : '4 x 4'}</span>
+                  <p className="text-[10px] mt-0.5 opacity-70">
+                    {fmt === '5x5' ? '10 jogadores' : '8 jogadores'}
+                  </p>
+                  {formData.format === fmt && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#d4af37]" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="pt-4">

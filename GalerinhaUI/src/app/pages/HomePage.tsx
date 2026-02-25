@@ -8,7 +8,7 @@ import { motion } from 'motion/react';
 import { clsx } from 'clsx';
 
 export const HomePage: React.FC = () => {
-  const { matches, currentUser, updateMatch } = useApp();
+  const { matches, currentUser, loadMatches } = useApp();
 
   // Buscar peladas da API ao carregar a página
   useEffect(() => {
@@ -26,14 +26,17 @@ export const HomePage: React.FC = () => {
 
         const data = await response.json();
         if (data.success && data.data) {
-          // Atualizar estado local com os dados da API
-          data.data.forEach((pelada: any) => {
-            const confirmedIds = (pelada.confirmed_player_ids || []).map(String);
-            updateMatch(pelada.id.toString(), {
-              status: pelada.status,
-              confirmedPlayerIds: confirmedIds,
-            });
-          });
+          const apiMatches = data.data.map((pelada: any) => ({
+            id: pelada.id.toString(),
+            name: pelada.name,
+            date: pelada.date,
+            time: pelada.time,
+            location: pelada.location,
+            format: pelada.format || '5x5',
+            status: pelada.status,
+            confirmedPlayerIds: (pelada.confirmed_player_ids || []).map(String),
+          }));
+          loadMatches(apiMatches);
         }
       } catch (error) {
         console.error('Erro ao buscar peladas:', error);

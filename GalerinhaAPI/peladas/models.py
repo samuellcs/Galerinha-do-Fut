@@ -126,7 +126,7 @@ class Pelada(models.Model):
     
     def can_draw_teams(self) -> bool:
         """Verifica se pode sortear times (mínimo necessário para o formato)."""
-        return self.is_open and self.confirmed_count >= self.players_needed
+        return not self.is_finished and self.confirmed_count >= self.players_needed
 
 
 class PeladaPlayer(models.Model):

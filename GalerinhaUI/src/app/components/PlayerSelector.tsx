@@ -142,15 +142,18 @@ export const PlayerSelector: React.FC<PlayerSelectorProps> = ({
                     >
                       <div className="flex items-center gap-3">
                         <div className={`
-                          w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm
+                          w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0
                           ${isSelected ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}
                         `}>
                           {isSelected ? '✓' : player.avatar}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {player.displayName}
+                          <p className={`font-semibold text-sm truncate ${isSelected ? 'text-green-700' : 'text-gray-800'}`}>
+                            {player.displayName || player.nickname || player.name}
                           </p>
+                          {player.nickname && player.name !== player.nickname && (
+                            <p className="text-xs text-gray-400 truncate">{player.name}</p>
+                          )}
                         </div>
                       </div>
                     </motion.div>

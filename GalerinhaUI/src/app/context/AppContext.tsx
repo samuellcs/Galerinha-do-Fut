@@ -46,6 +46,7 @@ interface AppContextType {
   createMatch: (match: Omit<Match, 'id' | 'status' | 'confirmedPlayerIds'>) => Promise<string>;
   confirmPresence: (matchId: string) => void;
   updateMatch: (matchId: string, data: Partial<Match>) => void;
+  loadMatches: (matches: Match[]) => void;
   generateTeams: (matchId: string) => void;
   addGameEvent: (matchId: string, playerId: string, type: 'goal' | 'assist') => void;
   finishMatch: (matchId: string) => void;
@@ -83,10 +84,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   
-  const [matches, setMatches] = useState<Match[]>(() => {
-    const saved = localStorage.getItem('matches');
-    return saved ? JSON.parse(saved) : INITIAL_MATCHES;
-  });
+  const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   
   const [teams, setTeams] = useState<Team[]>(() => {
     const saved = localStorage.getItem('teams');
@@ -106,11 +104,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.removeItem('currentUser');
     }
   }, [currentUser]);
-
-  // Persistir matches no localStorage
-  useEffect(() => {
-    localStorage.setItem('matches', JSON.stringify(matches));
-  }, [matches]);
 
   // Persistir teams no localStorage
   useEffect(() => {
@@ -209,9 +202,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateMatch = (matchId: string, data: Partial<Match>) => {
-    setMatches(prev => prev.map(m => 
-      m.id === matchId ? { ...m, ...data } : m
-    ));
+    setMatches(prev => {
+      const exists = prev.some(m => m.id === matchId);
+      if (exists) {
+        return prev.map(m => m.id === matchId ? { ...m, ...data } : m);
+      }
+      // Upsert: adiciona o match se não existir ainda
+      const newMatch: Match = {
+        id: matchId,
+        name: data.name || '',
+        date: data.date || '',
+        time: data.time || '',
+        location: data.location || '',
+        format: data.format || '5x5',
+        status: data.status || 'open',
+        confirmedPlayerIds: data.confirmedPlayerIds || [],
+      };
+      return [newMatch, ...prev];
+    });
+  };
+
+  const loadMatches = (newMatches: Match[]) => {
+    setMatches(newMatches);
   };
 
   const confirmPresence = (matchId: string) => {
@@ -295,7 +307,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <AppContext.Provider value={{
       currentUser, users, matches, teams, gameEvents,
       login, logout, registerUser, createMatch, confirmPresence, updateMatch,
-      generateTeams, addGameEvent, finishMatch, getMatchStats, getGlobalStats
+      loadMatches, generateTeams, addGameEvent, finishMatch, getMatchStats, getGlobalStats
     }}>
       {children}
     </AppContext.Provider>

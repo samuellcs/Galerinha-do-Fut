@@ -6,9 +6,13 @@ export const Layout: React.FC<{ children: ReactNode }> = ({ children }) => {
   const location = useLocation();
   const isLoginPage = location.pathname === '/';
 
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bg-background font-sans text-foreground pb-20 sm:pb-10">
-      {!isLoginPage && <Header />}
+      <Header />
       <main className="max-w-5xl mx-auto px-4 py-6">
         {children}
       </main>

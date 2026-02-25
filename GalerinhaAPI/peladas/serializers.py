@@ -189,9 +189,6 @@ class PeladaCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         """Valida combinação de data e hora."""
-        from datetime import datetime, timezone
-        import pytz
-        
         date_val = attrs.get('date')
         time_val = attrs.get('time')
         

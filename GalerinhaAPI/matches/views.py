@@ -235,15 +235,10 @@ class MatchViewSet(viewsets.ReadOnlyModelViewSet):
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Finaliza partida
+        # Finaliza partida (pelada continua ativa para novas rodadas)
         match.status = 'finished'
         match.finished_at = timezone.now()
         match.save()
-        
-        # Finaliza pelada também
-        pelada = match.pelada
-        pelada.status = 'finished'
-        pelada.save()
         
         serializer = MatchDetailSerializer(match, context={'request': request})
         
