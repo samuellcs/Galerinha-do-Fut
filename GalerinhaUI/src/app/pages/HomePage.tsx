@@ -15,7 +15,7 @@ export const HomePage: React.FC = () => {
     const fetchPeladas = async () => {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await fetch('http://192.168.0.52:8006/api/peladas/', {
+        const response = await fetch('https://galerinha-do-fut.onrender.com/api/peladas/', {
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
             'Content-Type': 'application/json'

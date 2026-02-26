@@ -30,7 +30,7 @@ export const MatchDetailPage: React.FC = () => {
   const fetchPeladaDetail = useCallback(async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ export const MatchDetailPage: React.FC = () => {
   const handleDrawTeams = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/draw-teams/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/draw-teams/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ export const MatchDetailPage: React.FC = () => {
   const handleAddPlayers = async (playerIds: number[]) => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/add-players/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/add-players/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -207,7 +207,7 @@ export const MatchDetailPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/remove-player/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/remove-player/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -235,7 +235,7 @@ export const MatchDetailPage: React.FC = () => {
     setDeleting(true);
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
@@ -258,7 +258,7 @@ export const MatchDetailPage: React.FC = () => {
     setPeladaFormat(format);
     try {
       const token = localStorage.getItem('access_token');
-      await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+      await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

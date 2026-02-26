@@ -35,7 +35,7 @@ export const TeamDrawPage: React.FC = () => {
     try {
       const token = localStorage.getItem('access_token');
       // Try to get match data from the pelada's match
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ export const TeamDrawPage: React.FC = () => {
   const handleRedraw = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(`http://192.168.0.52:8006/api/peladas/${id}/draw-teams/`, {
+      const response = await fetch(`https://galerinha-do-fut.onrender.com/api/peladas/${id}/draw-teams/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

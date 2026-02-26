@@ -48,7 +48,7 @@ export const LoginForm: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.0.52:8006/api/auth/login/', {
+      const response = await fetch('https://galerinha-do-fut.onrender.com/api/auth/login/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

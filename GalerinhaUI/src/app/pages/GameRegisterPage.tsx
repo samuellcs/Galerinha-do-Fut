@@ -120,7 +120,7 @@ function calculatePlayerStats(matches: MatchData[]): PlayerSummary[] {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const API_BASE = 'http://192.168.0.52:8006';
+const API_BASE = 'https://galerinha-do-fut.onrender.com';
 
 function authHeaders() {
   return {
