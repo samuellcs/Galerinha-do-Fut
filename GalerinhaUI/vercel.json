@@ -2,6 +2,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": "GalerinhaUI/dist",
   "installCommand": "npm install",
-  "framework": "vite",
-  "rootDirectory": "GalerinhaUI"
+  "framework": "vite"
 }
