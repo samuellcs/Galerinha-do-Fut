@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 import { PlayerSelector } from '../components/PlayerSelector';
 import { ChevronLeft, UserPlus, Users, Trophy, Clock, Swords, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

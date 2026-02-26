@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Link } from 'react-router';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import { Plus, MapPin, Clock, Calendar, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx } from 'clsx';

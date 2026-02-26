@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
 import { X, UserPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

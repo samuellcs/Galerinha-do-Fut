@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { LogOut, Trophy, Calendar } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { Button } from './ui/Button';
+import { Button } from './ui/button';
 
 export const Header: React.FC = () => {
   const { currentUser, logout } = useApp();

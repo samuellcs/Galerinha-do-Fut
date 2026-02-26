@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { useParams, useNavigate, Link } from 'react-router';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/button';
+import { Card } from '../components/ui/card';
 import { ChevronLeft, RefreshCw, Trophy, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 

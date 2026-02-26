@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card } from '../components/ui/card';
 import { ChevronLeft, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router';
 
@@ -94,7 +94,13 @@ export const CreateMatchPage: React.FC = () => {
     }
     
     try {
-      const matchId = await createMatch(formData);
+      const matchId = await createMatch({
+        name: formData.name,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        format: formData.format as '4x4' | '5x5'
+      });
       navigate(`/match/${matchId}`);
     } catch (error) {
       console.error('Erro ao criar pelada:', error);

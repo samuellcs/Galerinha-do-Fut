@@ -2,9 +2,14 @@ import * as React from "react";
 
 import { cn } from "./utils";
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
-  return (
+type InputProps = React.ComponentProps<"input"> & {
+  label?: string;
+};
+
+function Input({ className, type, label, id, ...props }: InputProps) {
+  const input = (
     <input
+      id={id}
       type={type}
       data-slot="input"
       className={cn(
@@ -15,6 +20,17 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       )}
       {...props}
     />
+  );
+
+  if (!label) return input;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="block text-sm font-medium text-foreground">
+        {label}
+      </label>
+      {input}
+    </div>
   );
 }
 
